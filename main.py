@@ -1,74 +1,84 @@
-import mysql.connector
-import requests
-import time
-import re
+
 import os
+import re
+import time
+import logging
+import mysql.connector
+from datetime import datetime
+from telethon.sync import TelegramClient
+from telethon.tl.types import MessageEntityTextUrl
 
-TOKEN = os.getenv("BOT_TOKEN")
-CHANNEL = "@badinjetslux"
+# === CONFIGURAZIONE ===
+API_ID = 'YOUR_API_ID'
+API_HASH = 'YOUR_API_HASH'
+BOT_TOKEN = 'YOUR_BOT_TOKEN'
+CHANNEL = 'badinjetslux'  # senza @
 
-DB_HOST = os.getenv("DB_HOST")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASS = os.getenv("DB_PASS")
+DB_HOST = '127.0.0.1'
+DB_USER = 'u536233056_badinjetluxapp'
+DB_PASS = 'Momobady1989'
+DB_NAME = 'u536233056_badinjetluxapp'
 
-API_URL = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+# === LOG ===
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("BadinJetsParser")
 
-def extract_data(text):
-    match = re.search(r"(?P<from>[\w\s]+)\s*→\s*(?P<to>[\w\s]+).*?Date[:\-]?\s*(?P<date>\d{1,2}/\d{1,2}/\d{4}).*?Jet[:\-]?\s*(?P<jet>[\w\s\-]+).*?Seats[:\-]?\s*(?P<seats>\d+)", text, re.DOTALL)
-    if match:
-        return {
-            "partenza_citta": match.group("from").strip(),
-            "arrivo_citta": match.group("to").strip(),
-            "data_partenza": match.group("date").replace("/", "-"),
-            "jet_model": match.group("jet").strip(),
-            "posti": int(match.group("seats"))
-        }
-    return None
+# === CONNESSIONE DB ===
+def db_connect():
+    return mysql.connector.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASS,
+        database=DB_NAME
+    )
 
-def save_to_db(data, link):
+# === PARSING POST ===
+def parse_post(text):
     try:
-        conn = mysql.connector.connect(
-            host=DB_HOST,
-            user=DB_USER,
-            password=DB_PASS,
-            database=DB_NAME
-        )
-        cursor = conn.cursor()
-        sql = """
-            INSERT INTO empty_legs (
-                partenza_citta, arrivo_citta, data_partenza,
-                jet_model, posti, link_telegram, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, NOW())
-        """
-        values = (
-            data["partenza_citta"], data["arrivo_citta"], data["data_partenza"],
-            data["jet_model"], data["posti"], link
-        )
-        cursor.execute(sql, values)
-        conn.commit()
-        cursor.close()
-        conn.close()
-        print("Offerta salvata:", data)
+        data = {}
+        # Parsing base
+        data["partenza_citta"] = re.search(r"From: (.+?)\n", text).group(1).strip()
+        data["arrivo_citta"] = re.search(r"To: (.+?)\n", text).group(1).strip()
+        data["data_partenza"] = re.search(r"Date: (.+?)\n", text).group(1).strip()
+        data["jet_model"] = re.search(r"Jet: (.+?)\n", text).group(1).strip()
+        data["posti"] = int(re.search(r"Seats: (\d+)", text).group(1))
+        data["prezzo"] = float(re.search(r"Price: €([\d,.]+)", text).group(1).replace(",", ""))
+        return data
     except Exception as e:
-        print("Errore salvataggio:", e)
+        log.warning(f"Parsing fallito: {e}")
+        return None
 
+# === SALVATAGGIO DB ===
+def save_to_db(data, link):
+    conn = db_connect()
+    cur = conn.cursor()
+
+    sql = (
+        "INSERT INTO empty_legs "
+        "(partenza_citta, arrivo_citta, data_partenza, jet_model, posti, prezzo, link_telegram, created_at) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())"
+    )
+    cur.execute(sql, (
+        data["partenza_citta"],
+        data["arrivo_citta"],
+        datetime.strptime(data["data_partenza"], "%d/%m/%Y").date(),
+        data["jet_model"],
+        data["posti"],
+        data["prezzo"],
+        link
+    ))
+    conn.commit()
+    conn.close()
+
+# === MAIN FUNCTION ===
 def run():
-    last_id = None
-    while True:
-        res = requests.get(API_URL)
-        if res.status_code == 200:
-            for msg in res.json()["result"]:
-                if "channel_post" in msg:
-                    post = msg["channel_post"]
-                    if post["chat"]["username"] == CHANNEL[1:] and post["message_id"] != last_id:
-                        text = post.get("text", "")
-                        link = f"https://t.me/{CHANNEL[1:]}/{post['message_id']}"
-                        data = extract_data(text)
-                        if data:
-                            save_to_db(data, link)
-                            last_id = post["message_id"]
-        time.sleep(60)
+    with TelegramClient('session_name', API_ID, API_HASH).start(bot_token=BOT_TOKEN) as client:
+        for message in client.iter_messages(CHANNEL, limit=20):
+            if message.text and "From:" in message.text:
+                data = parse_post(message.text)
+                if data:
+                    save_to_db(data, f"https://t.me/{CHANNEL}/{message.id}")
+                    log.info(f"Inserito: {data['partenza_citta']} → {data['arrivo_citta']}")
 
 if __name__ == "__main__":
     run()
