@@ -1,11 +1,10 @@
-
 import mysql.connector
-import os
 from datetime import datetime
+import pytz
 
-# Connessione al database Hostinger
+# Connessione al database su Hostinger
 connection = mysql.connector.connect(
-    host='127.0.0.1',
+    host='srv1222.hstgr.io',  # ← Sostituiscilo se il tuo host MySQL è diverso
     user='u536233056_badinjetluxapp',
     password='Momobady1989',
     database='u536233056_badinjetluxapp'
@@ -13,18 +12,10 @@ connection = mysql.connector.connect(
 
 cursor = connection.cursor()
 
-try:
-    print(f"[{datetime.now()}] Connessione riuscita. Estraendo dati...")
+# Esempio di query per vedere se funziona
+cursor.execute("SELECT COUNT(*) FROM empty_legs")
+result = cursor.fetchone()
+print(f"Numero di voli trovati: {result[0]}")
 
-    cursor.execute("SELECT partenza_citta, arrivo_citta, data_partenza FROM empty_legs ORDER BY data_partenza DESC LIMIT 5")
-    results = cursor.fetchall()
-
-    for row in results:
-        print(f"Da {row[0]} a {row[1]} - Partenza: {row[2]}")
-
-except mysql.connector.Error as err:
-    print(f"Errore: {err}")
-
-finally:
-    cursor.close()
-    connection.close()
+cursor.close()
+connection.close()
