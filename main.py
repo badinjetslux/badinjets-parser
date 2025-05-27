@@ -13,4 +13,5 @@ cursor = connection.cursor()
 cursor.execute("SELECT COUNT(*) FROM empty_legs")
 result = cursor.fetchone()
 print(f"Totale tratte trovate nel DB: {result[0]}")
+
 connection.close()
