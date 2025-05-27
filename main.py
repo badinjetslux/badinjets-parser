@@ -1,18 +1,17 @@
-import mysql.connector
 
-# Connessione al database aggiornato
+import mysql.connector
+import os
+
+# Connessione al database su Hostinger
 connection = mysql.connector.connect(
-    host="sql301.infinityfree.com",
-    user="if0_38945782",
+    host="srv1222.hstgr.io",
+    user="u536233056_badinjetluxapp",
     password="Momobady1989",
-    database="if0_38945782_badinjetslux"
+    database="u536233056_badinjetluxapp"
 )
 
-# Esegui una semplice query di test
 cursor = connection.cursor()
 cursor.execute("SELECT COUNT(*) FROM empty_legs")
 result = cursor.fetchone()
-print("Numero di voli empty leg disponibili:", result[0])
-
-cursor.close()
+print(f"Totale tratte trovate nel DB: {result[0]}")
 connection.close()
