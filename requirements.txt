@@ -1,4 +1,1 @@
-python-dotenv
 mysql-connector-python
-requests
-pytz
