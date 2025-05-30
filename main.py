@@ -1,17 +1,16 @@
 import mysql.connector
 
 connection = mysql.connector.connect(
-    host="sql301.infinityfree.com",
-    user="if0_38945782",
+    host="mysql.hostinger.com",  # ⚠️ Sostituisci con l'host corretto se diverso (es:  `srvxxx.main-hosting.eu`)
+    user="u536233056_badinjetluxapp",
     password="Momobady1989",
-    database="if0_38945782_badinjetslux"
+    database="u536233056_badinjetluxapp"
 )
 
 cursor = connection.cursor()
 cursor.execute("SHOW TABLES")
-tables = cursor.fetchall()
 
-for table in tables:
+for table in cursor:
     print(table)
 
 cursor.close()
