@@ -1,17 +1,17 @@
-
 import mysql.connector
 
 connection = mysql.connector.connect(
-    host="aws.connect.psdb.io",
-    user="railway_user",
-    password="LA_TUA_PASSWORD",  # Sostituisci con la password reale
-    database="badinjetslux",
-    ssl_ca="cacert.pem"
+    host="sql301.infinityfree.com",
+    user="if0_38945782",
+    password="Momobady1989",
+    database="if0_38945782_badinjetslux"
 )
 
 cursor = connection.cursor()
-cursor.execute("SHOW TABLES;")
-for table in cursor.fetchall():
+cursor.execute("SHOW TABLES")
+tables = cursor.fetchall()
+
+for table in tables:
     print(table)
 
 cursor.close()
